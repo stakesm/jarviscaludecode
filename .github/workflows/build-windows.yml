@@ -41,6 +41,16 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Pre-generate Routify routes
+        working-directory: frontend
+        # `npm run build` runs svelte-check before vite build, but the
+        # generated .routify/routes.default.js (imported by App.svelte)
+        # is normally only produced as a side effect of vite build itself.
+        # On a fresh checkout it doesn't exist yet, so svelte-check fails
+        # with "Cannot find module '../.routify/routes.default.js'".
+        # Generate it explicitly first so svelte-check can resolve it.
+        run: npx routify build
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
