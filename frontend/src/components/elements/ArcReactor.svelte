@@ -1,15 +1,32 @@
 <script lang="ts">
-    import { jarvisState } from "@/stores"
+    import { jarvisState, isSpeaking } from "@/stores"
 
-    $: stateClass = {
+    // ring of voice-reactive bars around the core - deterministic pseudo-random
+    // seeds so every bar pulses slightly out of phase with its neighbours
+    const barCount = 40
+    const barSeeds = Array.from({ length: barCount }, (_, i) => ((i * 137) % barCount) / barCount)
+
+    let speaking = false
+    isSpeaking.subscribe((v) => (speaking = v))
+
+    $: baseState = {
         'disconnected': 'disconnected',
         'idle': 'idle',
         'listening': 'active',
         'processing': 'active'
     }[$jarvisState] || 'disconnected'
+
+    // "speaking" takes over visually as soon as a voice reply starts playing
+    $: stateClass = speaking && baseState !== 'disconnected' ? 'speaking' : baseState
 </script>
 
 <div id="arc-reactor" class="reactor-container {stateClass} arc-white">
+    <div class="voice-bars" aria-hidden="true">
+        {#each barSeeds as seed, i}
+            <span class="voice-bar" style="--i:{i}; --n:{barCount}; --seed:{seed};"></span>
+        {/each}
+    </div>
+
     <div class="reactor-container-inner circle abs-center">
         <ul class="marks">
             {#each Array(60) as _, i}
@@ -32,6 +49,7 @@
         </div>
     </div>
     <div class="tunnel circle abs-center"></div>
+    <div class="scan-sweep circle abs-center"></div>
     <div class="core-wrapper circle abs-center"></div>
     <div class="core-outer circle abs-center"></div>
     <div class="core-inner circle abs-center"></div>
@@ -45,6 +63,7 @@
 <style lang="scss" global>
     // [ ARC REACTOR VARIABLES ]
     $arc-radius: 133px;
+    $bar-radius: 152px;
     $arc-container-size: 195%;
     $arc-spacing: 93%;
 
@@ -57,6 +76,11 @@
     // marks (lines) settings
     $mark-width: 2.5px;
     $mark-height: 11px;
+
+    // helper: keeps a bar's angular position while only the amplitude (scaleY) changes
+    @mixin bar-transform($scale) {
+        transform: rotate(calc(var(--i) * (360deg / var(--n)))) translateY(-#{$bar-radius}) scaleY(#{$scale});
+    }
 
     // [ DEFAULT THEME - CYAN ]
     .reactor-container {
@@ -81,6 +105,28 @@
             margin: 0;
             padding: 0;
         }
+    }
+
+    // [ HOLOGRAM FLICKER ]
+    // a rare, quick brightness glitch so the core reads as a projected hologram
+    .reactor-container::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: rgba(var(--arc-color), 1);
+        opacity: 0;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+        animation: holo-flicker 7s infinite steps(1);
+    }
+
+    @keyframes holo-flicker {
+        0%, 91%, 93%, 96.4%, 100% { opacity: 0; }
+        91.5% { opacity: 0.14; }
+        92.5% { opacity: 0.03; }
+        95.5% { opacity: 0.2; }
+        96% { opacity: 0; }
     }
 
     // [ COLOR THEMES ]
@@ -151,7 +197,6 @@
     .reactor-container.arc-white {
         --arc-color: 255, 255, 255;
         --arc-glow: #ffffff;
-        --arc-glow-rgb: 255, 255, 255;
         --arc-core-border: #4a4a4a;
         --arc-core-bg: #2a2a2a;
     }
@@ -184,7 +229,7 @@
         height: 238px;
         width: 238px;
         background-color: #161a1b;
-        box-shadow: 0px 0px 50px 15px rgba(var(--arc-color), 0.3), 
+        box-shadow: 0px 0px 50px 15px rgba(var(--arc-color), 0.3),
                     inset 0px 0px 50px 15px rgba(var(--arc-color), 0.3);
         transition: box-shadow 0.5s ease;
     }
@@ -205,7 +250,7 @@
         height: 70px;
         border: 5px solid var(--arc-core-border);
         background-color: #ffffff;
-        box-shadow: 0px 0px 7px 5px var(--arc-glow), 
+        box-shadow: 0px 0px 7px 5px var(--arc-glow),
                     0px 0px 10px 10px var(--arc-glow) inset;
         transition: box-shadow 0.5s ease;
     }
@@ -215,7 +260,7 @@
         height: 120px;
         border: 1px solid var(--arc-glow);
         background-color: #ffffff;
-        box-shadow: 0px 0px 2px 1px var(--arc-glow), 
+        box-shadow: 0px 0px 2px 1px var(--arc-glow),
                     0px 0px 10px 5px var(--arc-glow) inset;
         transition: box-shadow 0.5s ease;
     }
@@ -224,7 +269,7 @@
         width: 180px;
         height: 180px;
         background-color: var(--arc-core-bg);
-        box-shadow: 0px 0px 5px 4px var(--arc-glow), 
+        box-shadow: 0px 0px 5px 4px var(--arc-glow),
                     0px 0px 6px 2px var(--arc-glow) inset;
         transition: box-shadow 0.5s ease;
     }
@@ -233,9 +278,61 @@
         width: 220px;
         height: 220px;
         background-color: #ffffff;
-        box-shadow: 0px 0px 5px 1px var(--arc-glow), 
+        box-shadow: 0px 0px 5px 1px var(--arc-glow),
                     0px 0px 5px 4px var(--arc-glow) inset;
         transition: box-shadow 0.5s ease;
+    }
+
+    // [ SCANNING SWEEP - a thin light band crossing the core, hologram-projector style ]
+    .scan-sweep {
+        width: 220px;
+        height: 220px;
+        overflow: hidden;
+        pointer-events: none;
+        mix-blend-mode: screen;
+        opacity: 0.45;
+        z-index: 2;
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: -10%;
+            top: -30px;
+            width: 120%;
+            height: 30px;
+            background: linear-gradient(to bottom, transparent, rgba(var(--arc-color), 0.9), transparent);
+            filter: blur(1px);
+            animation: scan-move 3.4s linear infinite;
+        }
+    }
+
+    @keyframes scan-move {
+        0% { top: -30px; }
+        100% { top: 250px; }
+    }
+
+    // [ VOICE BARS - radial ring that pulses with listening / processing / speaking ]
+    .voice-bars {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        pointer-events: none;
+    }
+
+    .voice-bar {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 3px;
+        height: 12px;
+        margin-left: -1.5px;
+        margin-top: -6px;
+        border-radius: 2px;
+        background: var(--arc-glow);
+        opacity: 0;
+        box-shadow: 0 0 4px rgba(var(--arc-color), 0.8);
+        @include bar-transform(1);
+        transition: opacity 0.6s ease;
     }
 
     .coil-container {
@@ -285,7 +382,7 @@
 
     .semi_arc_3 {
         $offset: calc((100% - #{$arc-spacing}) / 2);
-        
+
         position: absolute;
         width: $arc-spacing;
         height: $arc-spacing;
@@ -421,10 +518,14 @@
         transform: scale(0.85);
         opacity: 0.4;
         filter: grayscale(0.7) brightness(0.6);
-        
+
+        &::after { animation: none; opacity: 0; }
+
         .coil-container { animation-duration: 20s; }
         .e7 { opacity: 0.3; }
-        
+        .scan-sweep { opacity: 0.1; &::before { animation-duration: 9s; } }
+        .voice-bar { opacity: 0; }
+
         .e5_1 {
             border-top-color: rgba(var(--arc-color), 0.1);
             border-left-color: rgba(var(--arc-color), 0.1);
@@ -475,10 +576,16 @@
     .reactor-container.idle {
         transform: scale(0.95);
         opacity: 0.9;
-        
+
         .coil-container { animation-duration: 10s; }
         .e7 { opacity: 0.6; }
-        
+
+        .voice-bar {
+            opacity: 0.22;
+            animation: bar-idle 2.6s ease-in-out infinite;
+            animation-delay: calc(var(--seed) * -2.6s);
+        }
+
         .e5_1 {
             border-top-color: rgba(var(--arc-color), 0.2);
             border-left-color: rgba(var(--arc-color), 0.2);
@@ -525,13 +632,25 @@
         transform: translate(-50%, -50%) scale(0.9);
     }
 
-    // [ ACTIVE ]
+    @keyframes bar-idle {
+        0%, 100% { @include bar-transform(0.9); }
+        50% { @include bar-transform(1.25); }
+    }
+
+    // [ ACTIVE - listening / processing ]
     .reactor-container.active {
         transform: scale(1.05);
         opacity: 1;
 
         .coil-container { animation-duration: 3s; }
         .e7 { opacity: 1; }
+        .scan-sweep { opacity: 0.65; &::before { animation-duration: 1.3s; } }
+
+        .voice-bar {
+            opacity: 0.65;
+            animation: bar-active 0.9s ease-in-out infinite;
+            animation-delay: calc(var(--seed) * -0.9s);
+        }
 
         .e5_1 {
             border-top-color: rgba(var(--arc-color), 0.3);
@@ -574,27 +693,27 @@
         }
 
         .reactor-container-inner {
-            box-shadow: 0px 0px 70px 25px rgba(var(--arc-color), 0.3), 
+            box-shadow: 0px 0px 70px 25px rgba(var(--arc-color), 0.3),
                         inset 0px 0px 70px 25px rgba(var(--arc-color), 0.3);
         }
 
         .core-inner {
-            box-shadow: 0px 0px 15px 10px var(--arc-glow), 
+            box-shadow: 0px 0px 15px 10px var(--arc-glow),
                         0px 0px 20px 15px var(--arc-glow) inset;
         }
 
         .core-outer {
-            box-shadow: 0px 0px 5px 3px var(--arc-glow), 
+            box-shadow: 0px 0px 5px 3px var(--arc-glow),
                         0px 0px 15px 10px var(--arc-glow) inset;
         }
 
         .core-wrapper {
-            box-shadow: 0px 0px 10px 8px var(--arc-glow), 
+            box-shadow: 0px 0px 10px 8px var(--arc-glow),
                         0px 0px 10px 5px var(--arc-glow) inset;
         }
 
         .tunnel {
-            box-shadow: 0px 0px 10px 3px var(--arc-glow), 
+            box-shadow: 0px 0px 10px 3px var(--arc-glow),
                         0px 0px 10px 8px var(--arc-glow) inset;
         }
 
@@ -610,11 +729,11 @@
     }
 
     @keyframes bg-pulse {
-        0%, 100% { 
+        0%, 100% {
             opacity: 1;
             transform: translate(-50%, -50%) scale(1.1);
         }
-        50% { 
+        50% {
             opacity: 0.85;
             transform: translate(-50%, -50%) scale(1.05);
         }
@@ -624,5 +743,154 @@
         0% { background: rgba(var(--arc-color), 1); box-shadow: 0 0 5px rgba(var(--arc-color), 1); }
         50% { background: rgba(var(--arc-color), 0.3); box-shadow: none; }
         100% { background: rgba(var(--arc-color), 1); box-shadow: 0 0 5px rgba(var(--arc-color), 1); }
+    }
+
+    @keyframes bar-active {
+        0%, 100% { @include bar-transform(0.8); }
+        50% { @include bar-transform(1.9); }
+    }
+
+    // [ SPEAKING - a voice reply is currently playing back ]
+    // same energy as "active" plus a fast, organic voice-bar wave and a pulsing core
+    .reactor-container.speaking {
+        transform: scale(1.08);
+        opacity: 1;
+
+        .coil-container { animation-duration: 2s; }
+        .e7 { opacity: 1; }
+        .scan-sweep { opacity: 0.85; &::before { animation-duration: 0.7s; } }
+
+        &::after { animation-duration: 2.4s; }
+
+        .voice-bar {
+            opacity: 1;
+
+            &:nth-child(4n+1) { animation: bar-speak-a 0.42s ease-in-out infinite; animation-delay: calc(var(--seed) * -0.42s); }
+            &:nth-child(4n+2) { animation: bar-speak-b 0.5s ease-in-out infinite; animation-delay: calc(var(--seed) * -0.5s); }
+            &:nth-child(4n+3) { animation: bar-speak-c 0.38s ease-in-out infinite; animation-delay: calc(var(--seed) * -0.38s); }
+            &:nth-child(4n) { animation: bar-speak-d 0.46s ease-in-out infinite; animation-delay: calc(var(--seed) * -0.46s); }
+        }
+
+        .e5_1 {
+            border-top-color: rgba(var(--arc-color), 0.35);
+            border-left-color: rgba(var(--arc-color), 0.35);
+            animation: rotate 3s linear infinite;
+        }
+        .e5_2 {
+            border-right-color: rgba(var(--arc-color), 0.55);
+            border-bottom-color: rgba(var(--arc-color), 0.55);
+            animation: rotate_anti 2.2s linear infinite;
+        }
+        .e5_3 {
+            border-top-color: rgba(var(--arc-color), 0.8);
+            animation: rotate 1.4s linear infinite;
+        }
+        .e5_4 {
+            border-bottom-color: rgba(var(--arc-color), 1);
+            animation: rotate_anti 1.8s linear infinite;
+        }
+
+        .e5_1_ghost {
+            border-top-color: rgba(var(--arc-color), 0.12);
+            border-right-color: rgba(var(--arc-color), 0.12);
+            animation: rotate_anti 4.5s linear infinite;
+        }
+        .e5_2_ghost {
+            border-top-color: rgba(var(--arc-color), 0.18);
+            border-left-color: rgba(var(--arc-color), 0.18);
+            animation: rotate 3.5s linear infinite;
+        }
+        .e5_3_ghost {
+            border-right-color: rgba(var(--arc-color), 0.24);
+            border-bottom-color: rgba(var(--arc-color), 0.24);
+            animation: rotate_anti 2.4s linear infinite;
+        }
+        .e5_4_ghost {
+            border-top-color: rgba(var(--arc-color), 0.32);
+            border-left-color: rgba(var(--arc-color), 0.32);
+            animation: rotate 3s linear infinite;
+        }
+
+        .reactor-container-inner {
+            box-shadow: 0px 0px 90px 30px rgba(var(--arc-color), 0.4),
+                        inset 0px 0px 90px 30px rgba(var(--arc-color), 0.4);
+        }
+
+        .core-inner {
+            animation: core-pulse-speak 0.5s ease-in-out infinite;
+        }
+
+        .core-outer {
+            box-shadow: 0px 0px 8px 5px var(--arc-glow),
+                        0px 0px 20px 14px var(--arc-glow) inset;
+        }
+
+        .core-wrapper {
+            box-shadow: 0px 0px 14px 10px var(--arc-glow),
+                        0px 0px 14px 7px var(--arc-glow) inset;
+        }
+
+        .tunnel {
+            box-shadow: 0px 0px 14px 5px var(--arc-glow),
+                        0px 0px 14px 10px var(--arc-glow) inset;
+        }
+
+        .marks li {
+            animation: colour_ease2_active 0.6s infinite ease-in-out;
+        }
+    }
+
+    .reactor-container.speaking::before {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.15);
+        animation: bg-pulse 1.1s ease-in-out infinite;
+    }
+
+    @keyframes core-pulse-speak {
+        0%, 100% {
+            box-shadow: 0px 0px 15px 10px var(--arc-glow),
+                        0px 0px 20px 15px var(--arc-glow) inset;
+        }
+        50% {
+            box-shadow: 0px 0px 28px 20px var(--arc-glow),
+                        0px 0px 34px 24px var(--arc-glow) inset;
+        }
+    }
+
+    @keyframes bar-speak-a {
+        0% { @include bar-transform(0.6); }
+        15% { @include bar-transform(2.1); }
+        30% { @include bar-transform(0.9); }
+        48% { @include bar-transform(1.8); }
+        65% { @include bar-transform(0.7); }
+        80% { @include bar-transform(2.3); }
+        100% { @include bar-transform(0.6); }
+    }
+
+    @keyframes bar-speak-b {
+        0% { @include bar-transform(1.6); }
+        20% { @include bar-transform(0.6); }
+        40% { @include bar-transform(2.2); }
+        60% { @include bar-transform(0.8); }
+        82% { @include bar-transform(1.9); }
+        100% { @include bar-transform(1.6); }
+    }
+
+    @keyframes bar-speak-c {
+        0% { @include bar-transform(0.8); }
+        25% { @include bar-transform(1.7); }
+        45% { @include bar-transform(2.4); }
+        70% { @include bar-transform(0.9); }
+        90% { @include bar-transform(1.5); }
+        100% { @include bar-transform(0.8); }
+    }
+
+    @keyframes bar-speak-d {
+        0% { @include bar-transform(2); }
+        18% { @include bar-transform(0.7); }
+        38% { @include bar-transform(1.5); }
+        58% { @include bar-transform(2.3); }
+        78% { @include bar-transform(0.6); }
+        100% { @include bar-transform(2); }
     }
 </style>

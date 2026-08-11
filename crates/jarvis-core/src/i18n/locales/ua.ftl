@@ -32,6 +32,7 @@ status-disconnected = Відключено
 status-standby = Очікування
 status-listening = Слухаю...
 status-processing = Обробка...
+status-speaking = Говорю...
 
 # ### STATS
 stats-microphone = МІКРОФОН
@@ -103,6 +104,16 @@ settings-vosk-model-desc =
     Ви можете завантажити моделі тут: https://alphacephei.com/vosk/models
 settings-models-not-found = Моделі не знайдено
 settings-models-hint = Помістіть моделі Vosk в папку resources/vosk
+
+# settings - claude
+settings-claude-key = Ключ Claude (Anthropic)
+settings-claude-key-desc =
+    Якщо вказано, Клод вирішуватиме, яку команду виконати, коли Джарвіс не зміг
+    розпізнати фразу сам, а якщо відповідної команди немає — просто відповість на питання.
+    Отримати ключ можна в консолі Anthropic: console.anthropic.com
+settings-claude-model = Модель Claude
+settings-claude-model-desc = Яку модель використовувати для розпізнавання команд і відповідей.
+settings-claude-model-recommended = рекомендовано
 
 # settings - openai
 settings-openai-key = Ключ OpenAI

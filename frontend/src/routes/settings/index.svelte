@@ -84,6 +84,8 @@
     let gainNormalizerEnabled = false
     let apiKeyPicovoice = ""
     let apiKeyOpenai = ""
+    let apiKeyClaude = ""
+    let claudeModel = "claude-opus-5"
 
     // subscribe to stores
     assistantVoice.subscribe(value => {
@@ -117,7 +119,9 @@
                 invoke("db_write", { key: "gain_normalizer", val: gainNormalizerEnabled.toString() }),
 
                 invoke("db_write", { key: "api_key__picovoice", val: apiKeyPicovoice }),
-                invoke("db_write", { key: "api_key__openai", val: apiKeyOpenai })
+                invoke("db_write", { key: "api_key__openai", val: apiKeyOpenai }),
+                invoke("db_write", { key: "api_key__claude", val: apiKeyClaude }),
+                invoke("db_write", { key: "claude_model", val: claudeModel })
             ])
 
             // update shared store
@@ -188,7 +192,7 @@
             // load settings from db
             const [mic, wakeWord, intentReco, slotEngine, glinerModel, voskModel,
                    noiseSuppression, vad, gainNormalizer,
-                   pico, openai] = await Promise.all([
+                   pico, openai, claude, claudeModelDb] = await Promise.all([
                 invoke<string>("db_read", { key: "selected_microphone" }),
                 invoke<string>("db_read", { key: "selected_wake_word_engine" }),
                 invoke<string>("db_read", { key: "selected_intent_recognition_engine" }),
@@ -201,7 +205,9 @@
                 invoke<string>("db_read", { key: "gain_normalizer" }),
 
                 invoke<string>("db_read", { key: "api_key__picovoice" }),
-                invoke<string>("db_read", { key: "api_key__openai" })
+                invoke<string>("db_read", { key: "api_key__openai" }),
+                invoke<string>("db_read", { key: "api_key__claude" }),
+                invoke<string>("db_read", { key: "claude_model" })
             ])
 
             selectedMicrophone = mic
@@ -215,6 +221,8 @@
             gainNormalizerEnabled = gainNormalizer === "true"
             apiKeyPicovoice = pico
             apiKeyOpenai = openai
+            apiKeyClaude = claude
+            claudeModel = claudeModelDb || "claude-opus-5"
         } catch (err) {
             console.error("failed to load settings:", err)
         }
@@ -458,6 +466,36 @@
                 bind:checked={gainNormalizerEnabled}
             />
         </InputWrapper>
+
+        <Space h="xl" />
+
+        <InputWrapper label={t('settings-claude-key')}>
+            <Text size="sm" color="gray">
+                {t('settings-claude-key-desc')}
+            </Text>
+            <Space h="sm" />
+            <Input
+                icon={Code}
+                placeholder={t('settings-claude-key')}
+                variant="filled"
+                autocomplete="off"
+                bind:value={apiKeyClaude}
+            />
+        </InputWrapper>
+
+        <Space h="md" />
+
+        <NativeSelect
+            data={[
+                { label: "Claude Opus 5 (" + t('settings-claude-model-recommended') + ")", value: "claude-opus-5" },
+                { label: "Claude Sonnet 5", value: "claude-sonnet-5" },
+                { label: "Claude Haiku 4.5", value: "claude-haiku-4-5" }
+            ]}
+            label={t('settings-claude-model')}
+            description={t('settings-claude-model-desc')}
+            variant="filled"
+            bind:value={claudeModel}
+        />
 
         <Space h="xl" />
 

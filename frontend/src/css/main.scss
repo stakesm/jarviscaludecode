@@ -6,17 +6,12 @@
 
 body {
     font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
-    background-color: #0a1214;
+    background-color: #05080a;
     color: #ffffff;
     overflow: hidden;
-
-    background-color: darken($color: #090C10, $amount: 0.8)!important;
-    // background-image: url(../media/bg.png)!important;
     background-repeat: no-repeat;
     background-size: contain;
-    // background-attachment: fixed;
     background-attachment: none;
-
 }
 
 ::-webkit-scrollbar {
@@ -497,11 +492,100 @@ body {
 
 .reactor-wrapper {
     transition: opacity 0.5s ease, filter 0.5s ease;
-    
+
     &.dimmed {
         opacity: 0.15;
         filter: grayscale(0.5);
     }
+}
+
+// ### HUD STATUS READOUT (below the hologram)
+.hud-readout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.4rem;
+    margin-top: -0.5rem;
+}
+
+.hud-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: "Consolas", "Roboto Condensed", monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: rgba(82, 254, 254, 0.55);
+    transition: color 0.3s ease;
+
+    &.live {
+        color: rgba(82, 254, 254, 0.9);
+    }
+
+    &.speaking {
+        color: #ffffff;
+        text-shadow: 0 0 12px rgba(82, 254, 254, 0.8);
+    }
+}
+
+.hud-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 6px currentColor;
+    animation: hud-dot-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes hud-dot-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1.15); }
+}
+
+.hud-transcript {
+    font-family: "Consolas", "Roboto Condensed", monospace;
+    font-size: 0.78rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.45);
+    max-width: 480px;
+    text-align: center;
+    line-height: 1.4;
+    animation: fadeIn 0.25s ease;
+}
+
+// Claude's free-form reply, shown when no local command matched the phrase
+.hud-ai-reply {
+    font-family: "Consolas", "Roboto Condensed", monospace;
+    font-size: 0.82rem;
+    color: #d9b8ff;
+    text-shadow: 0 0 10px rgba(180, 100, 255, 0.5);
+    max-width: 520px;
+    text-align: center;
+    line-height: 1.45;
+    animation: fadeIn 0.25s ease;
+}
+
+// ### HUD CORNER BRACKETS (sci-fi frame around the whole window)
+.hud-corner {
+    position: fixed;
+    width: 26px;
+    height: 26px;
+    border: 2px solid rgba(82, 254, 254, 0.35);
+    z-index: 200;
+    pointer-events: none;
+
+    &.tl { top: 14px; left: 14px; border-right: none; border-bottom: none; }
+    &.tr { top: 14px; right: 14px; border-left: none; border-bottom: none; }
+    &.bl { bottom: 14px; left: 14px; border-right: none; border-top: none; }
+    &.br { bottom: 14px; right: 14px; border-left: none; border-top: none; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .offline-badge {

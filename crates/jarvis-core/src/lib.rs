@@ -48,6 +48,11 @@ pub mod audio_buffer;
 #[cfg(feature = "lua")]
 pub mod lua;
 
+// Claude (Anthropic) integration - reuses the same `reqwest` dependency as
+// the Lua http API, so it rides along with the "lua" feature.
+#[cfg(feature = "lua")]
+pub mod ai;
+
 // shared statics
 // pub static APP_DIR: Lazy<PathBuf> = Lazy::new(|| std::env::current_dir().unwrap());
 pub static APP_DIR: Lazy<PathBuf> = Lazy::new(|| {

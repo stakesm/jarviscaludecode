@@ -33,12 +33,18 @@ pub struct Settings {
     pub language: String,
 
     pub api_keys: ApiKeys,
+
+    // Claude (Anthropic) model used to route/answer speech that no local
+    // command or intent could handle. See src/ai.rs.
+    #[serde(default = "default_claude_model")]
+    pub claude_model: String,
 }
 
 fn default_intent_backend() -> String { config::DEFAULT_INTENT_BACKEND.to_string() }
 fn default_slots_backend() -> String { config::DEFAULT_SLOTS_BACKEND.to_string() }
 fn default_vad_backend() -> String { config::DEFAULT_VAD_BACKEND.to_string() }
 fn default_language() -> String { crate::i18n::detect_system_language().to_string() }
+fn default_claude_model() -> String { "claude-opus-5".to_string() }
 
 // ### KEY-VALUE ACCESS
 
@@ -60,6 +66,8 @@ impl Settings {
             "language"                  => Some(self.language.clone()),
             "api_key__picovoice"        => Some(self.api_keys.picovoice.clone()),
             "api_key__openai"           => Some(self.api_keys.openai.clone()),
+            "api_key__claude"           => Some(self.api_keys.claude.clone()),
+            "claude_model"              => Some(self.claude_model.clone()),
             _ => None,
         }
     }
@@ -120,6 +128,16 @@ impl Settings {
             "api_key__openai" => {
                 self.api_keys.openai = val.to_string();
             }
+            "api_key__claude" => {
+                self.api_keys.claude = val.to_string();
+            }
+            "claude_model" => {
+                self.claude_model = if val.trim().is_empty() {
+                    default_claude_model()
+                } else {
+                    val.to_string()
+                };
+            }
             _ => return Err(format!("unknown setting: '{}'", key)),
         }
         Ok(())
@@ -142,6 +160,8 @@ impl Settings {
             "language",
             "api_key__picovoice",
             "api_key__openai",
+            "api_key__claude",
+            "claude_model",
         ]
     }
 }
@@ -172,7 +192,10 @@ impl Default for Settings {
             api_keys: ApiKeys {
                 picovoice: String::from(""),
                 openai: String::from(""),
+                claude: String::from(""),
             },
+
+            claude_model: default_claude_model(),
         }
     }
 }
@@ -181,4 +204,6 @@ impl Default for Settings {
 pub struct ApiKeys {
     pub picovoice: String,
     pub openai: String,
+    #[serde(default)]
+    pub claude: String,
 }

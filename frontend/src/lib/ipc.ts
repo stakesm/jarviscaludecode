@@ -12,6 +12,12 @@ export const lastRecognizedText = writable("")
 export const lastExecutedCommand = writable("")
 export const lastError = writable("")
 
+// true while a voice reply is being played back - drives the hologram's "speaking" animation
+export const isSpeaking = writable(false)
+
+// Claude's most recent free-form answer (when the phrase matched no local command)
+export const lastAiReply = writable("")
+
 // ### CONNECTION ###
 
 const IPC_URL = "ws://127.0.0.1:9712"
@@ -102,7 +108,21 @@ function handleEvent(data: any) {
 
         case "speech_recognized":
             lastRecognizedText.set(data.text || "")
+            lastAiReply.set("")
             jarvisState.set("processing")
+            break
+
+        case "ai_reply":
+            // Claude answered directly - no local command matched
+            lastAiReply.set(data.text || "")
+            break
+
+        case "speaking_started":
+            isSpeaking.set(true)
+            break
+
+        case "speaking_stopped":
+            isSpeaking.set(false)
             break
 
         case "command_executed":

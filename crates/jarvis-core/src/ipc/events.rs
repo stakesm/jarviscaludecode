@@ -33,6 +33,15 @@ pub enum IpcEvent {
 
     // request GUI to reveal/focus window
     RevealWindow,
+
+    // Claude answered a phrase directly (no matching local command)
+    AiReply { text: String },
+
+    // A voice line started playing (wake reply, command result, AI reply, ...)
+    SpeakingStarted,
+
+    // The voice line finished playing
+    SpeakingStopped,
 }
 
 // Actions sent from GUI to jarvis-app

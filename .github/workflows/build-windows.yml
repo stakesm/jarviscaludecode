@@ -1,0 +1,69 @@
+name: Build Windows Installer
+
+# Builds a native Windows .msi/.exe installer on a real Windows runner
+# (no cross-compilation) and uploads it as a workflow run artifact.
+# This intentionally does NOT create a GitHub Release - grab the build
+# from this workflow run's "Artifacts" section instead.
+#
+# Run it manually: Actions tab -> "Build Windows Installer" -> "Run workflow".
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust (stable, MSVC)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Build Windows installer
+        working-directory: crates/jarvis-gui
+        shell: pwsh
+        run: |
+          # frontend/dist was just built above - skip re-running "npm run build"
+          # from inside beforeBuildCommand, whose working directory tauri
+          # resolves differently depending on where `cargo tauri build` is invoked.
+          '{"build":{"beforeBuildCommand":""}}' | Out-File -FilePath ci-override.json -Encoding utf8
+          cargo tauri build --config ci-override.json
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-windows-installer
+          path: |
+            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
+          if-no-files-found: error
+          retention-days: 30

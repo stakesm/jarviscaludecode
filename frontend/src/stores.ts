@@ -5,8 +5,10 @@ import { invoke } from "@tauri-apps/api/core"
 export {
     jarvisState,
     ipcConnected,
+    isSpeaking,
     lastRecognizedText,
     lastExecutedCommand,
+    lastAiReply,
     lastError,
     connectIpc,
     enableIpc,

@@ -1,10 +1,18 @@
 use std::sync::mpsc::Receiver;
 use std::time::SystemTime;
 
-use jarvis_core::{audio_buffer::AudioRingBuffer, audio_processing, commands, config, listener, recorder, stt, COMMANDS_LIST, intent, voices, ipc::{self, IpcEvent}, i18n, slots};
+use jarvis_core::{audio_buffer::AudioRingBuffer, audio_processing, ai, commands, config, listener, recorder, stt, COMMANDS_LIST, intent, voices, ipc::{self, IpcEvent}, i18n, slots};
 use rand::seq::SliceRandom;
 
 use crate::should_stop;
+
+// Wrap a blocking voice-line playback with Speaking IPC events, so the GUI's
+// hologram animation tracks the exact duration of the audio being played.
+fn speak(play: impl FnOnce()) {
+    ipc::send(IpcEvent::SpeakingStarted);
+    play();
+    ipc::send(IpcEvent::SpeakingStopped);
+}
 
 // VAD state machine
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -33,7 +41,7 @@ fn main_loop(text_cmd_rx: Receiver<String>, rt: &tokio::runtime::Runtime) -> Res
     // 1.5 seconds = 1.5 * (16000 / 512) ≈ 47 frames
     let silence_threshold: u32 = ((1.5 * sample_rate as f32) / frame_length as f32) as u32;
     
-    voices::play_greet();
+    speak(voices::play_greet);
 
     match recorder::start_recording() {
         Ok(_) => info!("Recording started. Microphone: {}", 
@@ -50,7 +58,7 @@ fn main_loop(text_cmd_rx: Receiver<String>, rt: &tokio::runtime::Runtime) -> Res
     'wake_word: loop {
         if should_stop() {
             info!("Stop signal received, shutting down...");
-            voices::play_goodbye();
+            speak(voices::play_goodbye);
             ipc::send(IpcEvent::Stopping);
             break;
         }
@@ -222,7 +230,7 @@ fn recognize_command(
                                 info!("Discarding initial wake word from prefed audio");
                                 first_recognition = false;
                                 stt::reset_speech_recognizer();
-                                voices::play_reply();
+                                speak(voices::play_reply);
                                 vad_state = VadState::WaitingForVoice;
                                 silence_frames = 0;
                                 start = SystemTime::now();
@@ -232,7 +240,7 @@ fn recognize_command(
 
                             // just wake word, no command - reactivate
                             info!("Wake word repeated during chaining, reactivating...");
-                            voices::play_reply();
+                            speak(voices::play_reply);
                             stt::reset_speech_recognizer();
                             ipc::send(IpcEvent::Listening);
                             
@@ -351,8 +359,8 @@ fn execute_command(text: &str, rt: &tokio::runtime::Runtime) -> bool {
         }
     };
     
-    let cmd_result = if let Some((intent_id, confidence)) = 
-        rt.block_on(intent::classify(text)) 
+    let mut cmd_result = if let Some((intent_id, confidence)) =
+        rt.block_on(intent::classify(text))
     {
         info!("Intent recognized: {} (confidence: {:.2})", intent_id, confidence);
         intent::get_command_by_intent(commands_list, &intent_id)
@@ -360,10 +368,37 @@ fn execute_command(text: &str, rt: &tokio::runtime::Runtime) -> bool {
         info!("Intent not recognized, trying levenshtein fallback...");
         commands::fetch_command(text, commands_list)
     };
-    
+
+    // nothing matched locally - let Claude either pick a command or answer directly
+    if cmd_result.is_none() && ai::is_configured() {
+        info!("No local match for '{}', asking Claude...", text);
+
+        match ai::ask(text, commands_list) {
+            Ok(ai::ClaudeDecision::RunCommand { id }) => {
+                match commands::get_command_by_id(commands_list, &id) {
+                    Some(found) => {
+                        info!("Claude routed '{}' -> command '{}'", text, id);
+                        cmd_result = Some(found);
+                    }
+                    None => warn!("Claude picked an unknown command id: '{}'", id),
+                }
+            }
+            Ok(ai::ClaudeDecision::Reply { text: reply }) => {
+                info!("Claude replied: {}", reply);
+                ipc::send(IpcEvent::AiReply { text: reply });
+                speak(voices::play_reply);
+                ipc::send(IpcEvent::Idle);
+                return false; // AI replies never chain
+            }
+            Err(e) => {
+                warn!("Claude routing failed: {}", e);
+            }
+        }
+    }
+
     if let Some((cmd_path, cmd_config)) = cmd_result {
         info!("Command found: {:?}", cmd_path);
-        
+
         // extract slots if needed
         let extracted_slots = if !cmd_config.slots.is_empty() {
             let s = slots::extract(text, &cmd_config.slots);
@@ -379,7 +414,8 @@ fn execute_command(text: &str, rt: &tokio::runtime::Runtime) -> bool {
             Ok(chain) => {
                 info!("Command executed successfully");
                 // voices::play_ok();
-                voices::play_random_from(cmd_config.get_sounds(&i18n::get_language()).as_slice());
+                let sounds = cmd_config.get_sounds(&i18n::get_language());
+                speak(|| voices::play_random_from(sounds.as_slice()));
                 ipc::send(IpcEvent::CommandExecuted {
                     id: cmd_config.id.clone(),
                     success: true,
@@ -389,7 +425,7 @@ fn execute_command(text: &str, rt: &tokio::runtime::Runtime) -> bool {
             }
             Err(msg) => {
                 error!("Error executing command: {}", msg);
-                voices::play_error();
+                speak(voices::play_error);
                 ipc::send(IpcEvent::CommandExecuted {
                     id: cmd_config.id.clone(),
                     success: false,
@@ -399,12 +435,12 @@ fn execute_command(text: &str, rt: &tokio::runtime::Runtime) -> bool {
         }
     } else {
         info!("No command found for: {}", text);
-        voices::play_not_found();
-        ipc::send(IpcEvent::Error { 
-            message: format!("Command not found: {}", text) 
+        speak(voices::play_not_found);
+        ipc::send(IpcEvent::Error {
+            message: format!("Command not found: {}", text)
         });
     }
-    
+
     ipc::send(IpcEvent::Idle);
     false // no chain on error or not found
 }
@@ -412,7 +448,7 @@ fn execute_command(text: &str, rt: &tokio::runtime::Runtime) -> bool {
 
 pub fn close(code: i32) {
     info!("Closing application.");
-    voices::play_goodbye();
+    speak(voices::play_goodbye);
     ipc::send(IpcEvent::Stopping);
     std::process::exit(code);
 }
