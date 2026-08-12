@@ -15,6 +15,14 @@ use jarvis_core::{config, i18n, voices, ipc::{self, IpcEvent}, SettingsManager};
 const TRAY_ICON_BYTES: &[u8] = include_bytes!("../../../resources/icons/32x32.png");
 
 pub fn init_blocking(settings: SettingsManager) {
+    // On Linux, tray-icon/muda build the menu on top of GTK, so GTK must be
+    // initialized before any menu/tray objects are constructed - not just
+    // before the later gtk::main() call. Building the menu first (as this
+    // used to do) panics with "GTK has not been initialized" as soon as it
+    // touches a GTK type.
+    #[cfg(target_os = "linux")]
+    gtk::init().unwrap();
+
     let icon = load_icon_from_bytes(TRAY_ICON_BYTES);
 
     // build menu with settings submenus
@@ -32,7 +40,6 @@ pub fn init_blocking(settings: SettingsManager) {
 
     #[cfg(target_os = "linux")]
     {
-        gtk::init().unwrap();
         glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
             if let Ok(event) = menu_channel.try_recv() {
                 handle_menu_event(&event, &settings, &tray_state);

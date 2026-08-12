@@ -22,6 +22,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download bundled AI models
+        shell: pwsh
+        # resources/models/** is gitignored (the .onnx weights are ~90-235MB,
+        # well over GitHub's 100MB per-file limit) so the repo only carries
+        # Git-LFS-style pointer stubs for them. Without this step those
+        # ~130-byte stub files get bundled as-is and jarvis-app tries to load
+        # them as real ONNX models at startup - every user hits an instant,
+        # unexplained crash on first launch. Fetch the real weights (verified
+        # by sha256 against what the pointer files reference) before the
+        # Tauri bundler picks up resources/models/.
+        run: |
+          $ErrorActionPreference = "Stop"
+          $files = @(
+            @{ Url = "https://huggingface.co/Qdrant/all-MiniLM-L6-v2-onnx/resolve/main/model.onnx"
+               Dest = "resources/models/all-MiniLM-L6-v2/model.onnx"
+               Sha256 = "BBD7B466F6D58E646FDC2BD5FD67B2F5E93C0B687011BD4548C420F7BD46F0C5" },
+            @{ Url = "https://huggingface.co/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/resolve/main/model_optimized.onnx"
+               Dest = "resources/models/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/model.onnx"
+               Sha256 = "634D0F66C29DC934C8FA72B8A4FE91DD4D420A22F1D82A241058D4316E659A99" },
+            @{ Url = "https://huggingface.co/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/resolve/main/tokenizer.json"
+               Dest = "resources/models/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/tokenizer.json"
+               Sha256 = "FA685FC160BBDBAB64058D4FC91B60E62D207E8DC60B9AF5C002C5AB946DED00" },
+            @{ Url = "https://huggingface.co/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/resolve/main/unigram.json"
+               Dest = "resources/models/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/unigram.json"
+               Sha256 = "DA145B5E7700AE40F16691EC32A0B1FDC1EE3298DB22A31EA55F57A966C4A65D" }
+          )
+          foreach ($f in $files) {
+            Write-Host "Downloading $($f.Dest) ..."
+            Invoke-WebRequest -Uri $f.Url -OutFile $f.Dest
+            $actual = (Get-FileHash -Path $f.Dest -Algorithm SHA256).Hash
+            if ($actual -ne $f.Sha256) {
+              throw "Checksum mismatch for $($f.Dest): expected $($f.Sha256), got $actual"
+            }
+          }
+
       - name: Setup Rust (stable, MSVC)
         uses: dtolnay/rust-toolchain@stable
 
