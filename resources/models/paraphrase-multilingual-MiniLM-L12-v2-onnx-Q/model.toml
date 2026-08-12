@@ -1,0 +1,5 @@
+[model]
+id = "paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"
+name = "Paraphrase Multilingual MiniLM-L12-v2 (quantized)"
+tasks = ["intent"]
+description = "Multilingual (incl. Russian/Ukrainian) sentence-embedding model, selectable as an intent-matching backend."

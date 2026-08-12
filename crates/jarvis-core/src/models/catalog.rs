@@ -98,6 +98,9 @@ pub fn code_backends(task: Task) -> Vec<BackendOption> {
                 model_id: None,
             },
         ],
+        // no code-only backend - either the bundled local model (from the
+        // catalog below) or nothing
+        Task::Generation => vec![],
     }
 }
 

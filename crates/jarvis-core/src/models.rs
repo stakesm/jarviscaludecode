@@ -19,6 +19,9 @@ pub use loaders::ort_model;
 #[cfg(feature = "jarvis_app")]
 pub use loaders::intent_classifier;
 
+#[cfg(feature = "jarvis_app")]
+pub use loaders::llm;
+
 #[cfg(feature = "vosk")]
 pub use loaders::vosk;
 

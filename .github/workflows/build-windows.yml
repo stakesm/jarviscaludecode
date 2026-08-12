@@ -46,10 +46,23 @@ jobs:
                Sha256 = "FA685FC160BBDBAB64058D4FC91B60E62D207E8DC60B9AF5C002C5AB946DED00" },
             @{ Url = "https://huggingface.co/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/resolve/main/unigram.json"
                Dest = "resources/models/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/unigram.json"
-               Sha256 = "DA145B5E7700AE40F16691EC32A0B1FDC1EE3298DB22A31EA55F57A966C4A65D" }
+               Sha256 = "DA145B5E7700AE40F16691EC32A0B1FDC1EE3298DB22A31EA55F57A966C4A65D" },
+            # local offline-LLM fallback (local_ai.rs / models/loaders/llm.rs) -
+            # int8-quantized Qwen2.5-0.5B-Instruct, exported with KV-cache I/O
+            # by the onnx-community transformers.js pipeline.
+            @{ Url = "https://huggingface.co/onnx-community/Qwen2.5-0.5B-Instruct/resolve/main/onnx/model_quantized.onnx"
+               Dest = "resources/models/qwen2.5-0.5b-instruct/onnx/model_quantized.onnx"
+               Sha256 = "41834041AB1B29EFF9FC592F1A29A1844133AEA35832EA9FA91682BE13016100" },
+            @{ Url = "https://huggingface.co/onnx-community/Qwen2.5-0.5B-Instruct/resolve/main/tokenizer.json"
+               Dest = "resources/models/qwen2.5-0.5b-instruct/tokenizer.json"
+               Sha256 = "A8506E7111B80C6D8635951A02EAB0F4E1A8E4E5772DA83846579E97B16F61BF" }
           )
           foreach ($f in $files) {
             Write-Host "Downloading $($f.Dest) ..."
+            # ensure the destination directory exists - most of these sit in
+            # already-tracked model folders, but resources/models/qwen.../onnx/
+            # has no tracked file of its own to bring the folder along on checkout.
+            New-Item -ItemType Directory -Force -Path (Split-Path $f.Dest -Parent) | Out-Null
             Invoke-WebRequest -Uri $f.Url -OutFile $f.Dest
             $actual = (Get-FileHash -Path $f.Dest -Algorithm SHA256).Hash
             if ($actual -ne $f.Sha256) {

@@ -86,6 +86,10 @@
     let apiKeyOpenai = ""
     let apiKeyClaude = ""
     let claudeModel = "claude-opus-5"
+    let localAiEnabled = true
+    let customAiBaseUrl = ""
+    let customAiKey = ""
+    let customAiModel = ""
 
     // subscribe to stores
     assistantVoice.subscribe(value => {
@@ -121,7 +125,12 @@
                 invoke("db_write", { key: "api_key__picovoice", val: apiKeyPicovoice }),
                 invoke("db_write", { key: "api_key__openai", val: apiKeyOpenai }),
                 invoke("db_write", { key: "api_key__claude", val: apiKeyClaude }),
-                invoke("db_write", { key: "claude_model", val: claudeModel })
+                invoke("db_write", { key: "claude_model", val: claudeModel }),
+
+                invoke("db_write", { key: "local_ai_enabled", val: localAiEnabled.toString() }),
+                invoke("db_write", { key: "custom_ai_base_url", val: customAiBaseUrl }),
+                invoke("db_write", { key: "custom_ai_key", val: customAiKey }),
+                invoke("db_write", { key: "custom_ai_model", val: customAiModel })
             ])
 
             // update shared store
@@ -192,7 +201,8 @@
             // load settings from db
             const [mic, wakeWord, intentReco, slotEngine, glinerModel, voskModel,
                    noiseSuppression, vad, gainNormalizer,
-                   pico, openai, claude, claudeModelDb] = await Promise.all([
+                   pico, openai, claude, claudeModelDb,
+                   localAi, customBaseUrl, customKey, customModel] = await Promise.all([
                 invoke<string>("db_read", { key: "selected_microphone" }),
                 invoke<string>("db_read", { key: "selected_wake_word_engine" }),
                 invoke<string>("db_read", { key: "selected_intent_recognition_engine" }),
@@ -207,7 +217,12 @@
                 invoke<string>("db_read", { key: "api_key__picovoice" }),
                 invoke<string>("db_read", { key: "api_key__openai" }),
                 invoke<string>("db_read", { key: "api_key__claude" }),
-                invoke<string>("db_read", { key: "claude_model" })
+                invoke<string>("db_read", { key: "claude_model" }),
+
+                invoke<string>("db_read", { key: "local_ai_enabled" }),
+                invoke<string>("db_read", { key: "custom_ai_base_url" }),
+                invoke<string>("db_read", { key: "custom_ai_key" }),
+                invoke<string>("db_read", { key: "custom_ai_model" })
             ])
 
             selectedMicrophone = mic
@@ -223,6 +238,10 @@
             apiKeyOpenai = openai
             apiKeyClaude = claude
             claudeModel = claudeModelDb || "claude-opus-5"
+            localAiEnabled = localAi !== "false"
+            customAiBaseUrl = customBaseUrl
+            customAiKey = customKey
+            customAiModel = customModel
         } catch (err) {
             console.error("failed to load settings:", err)
         }
@@ -495,6 +514,51 @@
             variant="filled"
             bind:value={claudeModel}
         />
+
+        <Space h="xl" />
+
+        <InputWrapper label={t('settings-local-ai-enabled')}>
+            <Text size="sm" color="gray">
+                {t('settings-local-ai-enabled-desc')}
+            </Text>
+            <Space h="xs" />
+            <Switch
+                label={localAiEnabled ? t('settings-enabled') : t('settings-disabled')}
+                bind:checked={localAiEnabled}
+            />
+        </InputWrapper>
+
+        <Space h="xl" />
+
+        <InputWrapper label={t('settings-custom-ai-title')}>
+            <Text size="sm" color="gray">
+                {t('settings-custom-ai-desc')}
+            </Text>
+            <Space h="sm" />
+            <Input
+                icon={Code}
+                placeholder={t('settings-custom-ai-base-url') + " (e.g. https://api.example.com/v1)"}
+                variant="filled"
+                autocomplete="off"
+                bind:value={customAiBaseUrl}
+            />
+            <Space h="xs" />
+            <Input
+                icon={Code}
+                placeholder={t('settings-custom-ai-key')}
+                variant="filled"
+                autocomplete="off"
+                bind:value={customAiKey}
+            />
+            <Space h="xs" />
+            <Input
+                icon={Code}
+                placeholder={t('settings-custom-ai-model')}
+                variant="filled"
+                autocomplete="off"
+                bind:value={customAiModel}
+            />
+        </InputWrapper>
 
         <Space h="xl" />
 

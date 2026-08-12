@@ -1,0 +1,5 @@
+[model]
+id = "qwen2.5-0.5b-instruct"
+name = "Qwen2.5-0.5B-Instruct (local, offline)"
+tasks = ["generation"]
+description = "Small quantized local LLM. Offline fallback for free-form replies when no command matches and no cloud AI (Claude / custom endpoint) is configured."

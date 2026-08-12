@@ -117,6 +117,23 @@ settings-claude-model = Модель Claude
 settings-claude-model-desc = Какую модель использовать для распознавания команд и ответов.
 settings-claude-model-recommended = рекомендуется
 
+# settings - local ai
+settings-local-ai-enabled = Локальный ИИ-ассистент (офлайн)
+settings-local-ai-enabled-desc =
+    Небольшая ИИ-модель, встроенная в Джарвиса — отвечает, когда ни одна команда
+    не подошла и облачный ИИ не настроен. Работает полностью офлайн, без какой-либо
+    настройки, включена по умолчанию. Отключите, чтобы сэкономить память на слабом железе.
+
+# settings - custom ai endpoint
+settings-custom-ai-title = Свой AI-эндпоинт (опционально)
+settings-custom-ai-desc =
+    Используйте свой OpenAI-совместимый API вместо (или вместе с) Claude.
+    Проверяется после Claude, перед офлайн-моделью. Хранится только на этом
+    устройстве, никогда не встраивается в приложение и никуда не передаётся.
+settings-custom-ai-base-url = Базовый URL
+settings-custom-ai-key = API-ключ
+settings-custom-ai-model = Название модели
+
 # settings - openai
 settings-openai-key = Ключ OpenAI
 settings-openai-not-supported = В данный момент ChatGPT не поддерживается. Он будет добавлен в ближайших обновлениях.

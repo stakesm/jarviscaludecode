@@ -29,6 +29,11 @@ pub struct Settings {
     pub noise_suppression: NoiseSuppressionBackend,
     pub gain_normalizer: bool,
 
+    // offline fallback LLM for phrases no command/intent matched. bundled
+    // with the installer (see local_ai.rs) - on by default, no setup needed.
+    #[serde(default = "default_local_ai_enabled")]
+    pub local_ai_enabled: bool,
+
     #[serde(default = "default_language")]
     pub language: String,
 
@@ -45,6 +50,7 @@ fn default_slots_backend() -> String { config::DEFAULT_SLOTS_BACKEND.to_string()
 fn default_vad_backend() -> String { config::DEFAULT_VAD_BACKEND.to_string() }
 fn default_language() -> String { crate::i18n::detect_system_language().to_string() }
 fn default_claude_model() -> String { "claude-opus-5".to_string() }
+fn default_local_ai_enabled() -> bool { config::DEFAULT_LOCAL_AI_ENABLED }
 
 // ### KEY-VALUE ACCESS
 
@@ -63,11 +69,15 @@ impl Settings {
             "speech_to_text_engine"     => Some(format!("{:?}", self.speech_to_text_engine)),
             "noise_suppression"         => Some(format!("{:?}", self.noise_suppression)),
             "gain_normalizer"           => Some(self.gain_normalizer.to_string()),
+            "local_ai_enabled"          => Some(self.local_ai_enabled.to_string()),
             "language"                  => Some(self.language.clone()),
             "api_key__picovoice"        => Some(self.api_keys.picovoice.clone()),
             "api_key__openai"           => Some(self.api_keys.openai.clone()),
             "api_key__claude"           => Some(self.api_keys.claude.clone()),
             "claude_model"              => Some(self.claude_model.clone()),
+            "custom_ai_base_url"        => Some(self.api_keys.custom_ai_base_url.clone()),
+            "custom_ai_key"             => Some(self.api_keys.custom_ai_key.clone()),
+            "custom_ai_model"           => Some(self.api_keys.custom_ai_model.clone()),
             _ => None,
         }
     }
@@ -119,6 +129,13 @@ impl Settings {
                     _ => return Err(format!("expected 'true' or 'false', got: '{}'", val)),
                 };
             }
+            "local_ai_enabled" => {
+                self.local_ai_enabled = match val.to_lowercase().as_str() {
+                    "true"  => true,
+                    "false" => false,
+                    _ => return Err(format!("expected 'true' or 'false', got: '{}'", val)),
+                };
+            }
             "language" => {
                 self.language = val.to_string();
             }
@@ -137,6 +154,15 @@ impl Settings {
                 } else {
                     val.to_string()
                 };
+            }
+            "custom_ai_base_url" => {
+                self.api_keys.custom_ai_base_url = val.to_string();
+            }
+            "custom_ai_key" => {
+                self.api_keys.custom_ai_key = val.to_string();
+            }
+            "custom_ai_model" => {
+                self.api_keys.custom_ai_model = val.to_string();
             }
             _ => return Err(format!("unknown setting: '{}'", key)),
         }
@@ -157,11 +183,15 @@ impl Settings {
             "speech_to_text_engine",
             "noise_suppression",
             "gain_normalizer",
+            "local_ai_enabled",
             "language",
             "api_key__picovoice",
             "api_key__openai",
             "api_key__claude",
             "claude_model",
+            "custom_ai_base_url",
+            "custom_ai_key",
+            "custom_ai_model",
         ]
     }
 }
@@ -186,6 +216,7 @@ impl Default for Settings {
 
             noise_suppression: config::DEFAULT_NOISE_SUPPRESSION,
             gain_normalizer: config::DEFAULT_GAIN_NORMALIZER,
+            local_ai_enabled: config::DEFAULT_LOCAL_AI_ENABLED,
 
             language: crate::i18n::detect_system_language().to_string(),
 
@@ -193,6 +224,9 @@ impl Default for Settings {
                 picovoice: String::from(""),
                 openai: String::from(""),
                 claude: String::from(""),
+                custom_ai_base_url: String::from(""),
+                custom_ai_key: String::from(""),
+                custom_ai_model: String::from(""),
             },
 
             claude_model: default_claude_model(),
@@ -206,4 +240,14 @@ pub struct ApiKeys {
     pub openai: String,
     #[serde(default)]
     pub claude: String,
+
+    // user's own OpenAI-compatible endpoint (see custom_ai.rs) - all empty
+    // by default, never bundled/committed, only ever stored in the user's
+    // local settings file.
+    #[serde(default)]
+    pub custom_ai_base_url: String,
+    #[serde(default)]
+    pub custom_ai_key: String,
+    #[serde(default)]
+    pub custom_ai_model: String,
 }

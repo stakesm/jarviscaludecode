@@ -53,6 +53,15 @@ pub mod lua;
 #[cfg(feature = "lua")]
 pub mod ai;
 
+// user's own OpenAI-compatible endpoint - same reqwest dependency as ai.rs.
+#[cfg(feature = "lua")]
+pub mod custom_ai;
+
+// bundled offline LLM fallback - needs the ort/models stack (jarvis_app),
+// not reqwest/lua.
+#[cfg(feature = "jarvis_app")]
+pub mod local_ai;
+
 // shared statics
 // pub static APP_DIR: Lazy<PathBuf> = Lazy::new(|| std::env::current_dir().unwrap());
 pub static APP_DIR: Lazy<PathBuf> = Lazy::new(|| {

@@ -10,6 +10,8 @@ pub enum Task {
     Vad,
     NoiseSuppression,
     Stt,
+    // free-text generation (local LLM fallback for unmatched phrases)
+    Generation,
 }
 
 // metadata about a model, parsed from model.toml on disk

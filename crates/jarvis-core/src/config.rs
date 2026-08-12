@@ -187,6 +187,11 @@ pub const DEFAULT_LUA_TIMEOUT: u64 = 10000; // ms
 pub const CMD_RATIO_THRESHOLD: f64 = 75f64;
 pub const CMS_WAIT_DELAY: std::time::Duration = std::time::Duration::from_secs(15);
 
+// LOCAL AI (offline fallback for unmatched phrases - see local_ai.rs)
+pub const DEFAULT_LOCAL_AI_ENABLED: bool = true;
+pub const LOCAL_AI_MODEL_ID: &str = "qwen2.5-0.5b-instruct";
+pub const LOCAL_AI_MAX_NEW_TOKENS: usize = 80;
+
 // pub const ASSISTANT_GREET_PHRASES: [&str; 3] = ["greet1", "greet2", "greet3"];
 // pub const ASSISTANT_PHRASES_TBR: [&str; 17] = [
 //     "джарвис",

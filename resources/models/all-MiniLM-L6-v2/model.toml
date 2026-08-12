@@ -1,0 +1,5 @@
+[model]
+id = "all-MiniLM-L6-v2"
+name = "All-MiniLM-L6-v2"
+tasks = ["intent"]
+description = "English sentence-embedding model, selectable as an intent-matching backend."

@@ -117,6 +117,23 @@ settings-claude-model = Claude model
 settings-claude-model-desc = Which model to use for command routing and replies.
 settings-claude-model-recommended = recommended
 
+# settings - local ai
+settings-local-ai-enabled = Local AI assistant (offline)
+settings-local-ai-enabled-desc =
+    A small AI model bundled with Jarvis that answers when no command matches
+    and no cloud AI is configured. Works fully offline, no setup needed - on
+    by default. Turn off to save RAM on very low-end hardware.
+
+# settings - custom ai endpoint
+settings-custom-ai-title = Custom AI endpoint (optional)
+settings-custom-ai-desc =
+    Use your own OpenAI-compatible API instead of (or alongside) Claude.
+    Tried after Claude, before the offline model. Stored only on this
+    device, never bundled or shared.
+settings-custom-ai-base-url = Base URL
+settings-custom-ai-key = API key
+settings-custom-ai-model = Model name
+
 # settings - openai
 settings-openai-key = OpenAI Key
 settings-openai-not-supported = ChatGPT is not currently supported. It will be added in future updates.

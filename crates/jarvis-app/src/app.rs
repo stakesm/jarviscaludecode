@@ -1,7 +1,7 @@
 use std::sync::mpsc::Receiver;
 use std::time::SystemTime;
 
-use jarvis_core::{audio_buffer::AudioRingBuffer, audio_processing, ai, commands, config, listener, recorder, stt, COMMANDS_LIST, intent, voices, ipc::{self, IpcEvent}, i18n, slots};
+use jarvis_core::{audio_buffer::AudioRingBuffer, audio_processing, ai, custom_ai, local_ai, commands, config, listener, recorder, stt, COMMANDS_LIST, intent, voices, ipc::{self, IpcEvent}, i18n, slots};
 use rand::seq::SliceRandom;
 
 use crate::should_stop;
@@ -369,29 +369,72 @@ fn execute_command(text: &str, rt: &tokio::runtime::Runtime) -> bool {
         commands::fetch_command(text, commands_list)
     };
 
-    // nothing matched locally - let Claude either pick a command or answer directly
-    if cmd_result.is_none() && ai::is_configured() {
-        info!("No local match for '{}', asking Claude...", text);
+    // nothing matched locally - let Claude either pick a command or answer
+    // directly. If Claude isn't configured (or fails), fall through to the
+    // user's own custom endpoint if they set one up, and finally to the
+    // bundled offline model - the one fallback that needs no configuration
+    // and no network, so it's still there even if the cloud options aren't.
+    if cmd_result.is_none() {
+        if ai::is_configured() {
+            info!("No local match for '{}', asking Claude...", text);
 
-        match ai::ask(text, commands_list) {
-            Ok(ai::ClaudeDecision::RunCommand { id }) => {
-                match commands::get_command_by_id(commands_list, &id) {
-                    Some(found) => {
-                        info!("Claude routed '{}' -> command '{}'", text, id);
-                        cmd_result = Some(found);
+            match ai::ask(text, commands_list) {
+                Ok(ai::ClaudeDecision::RunCommand { id }) => {
+                    match commands::get_command_by_id(commands_list, &id) {
+                        Some(found) => {
+                            info!("Claude routed '{}' -> command '{}'", text, id);
+                            cmd_result = Some(found);
+                        }
+                        None => warn!("Claude picked an unknown command id: '{}'", id),
                     }
-                    None => warn!("Claude picked an unknown command id: '{}'", id),
+                }
+                Ok(ai::ClaudeDecision::Reply { text: reply }) => {
+                    info!("Claude replied: {}", reply);
+                    ipc::send(IpcEvent::AiReply { text: reply });
+                    speak(voices::play_reply);
+                    ipc::send(IpcEvent::Idle);
+                    return false; // AI replies never chain
+                }
+                Err(e) => {
+                    warn!("Claude routing failed: {}", e);
                 }
             }
-            Ok(ai::ClaudeDecision::Reply { text: reply }) => {
-                info!("Claude replied: {}", reply);
-                ipc::send(IpcEvent::AiReply { text: reply });
-                speak(voices::play_reply);
-                ipc::send(IpcEvent::Idle);
-                return false; // AI replies never chain
+        }
+
+        if cmd_result.is_none() && custom_ai::is_configured() {
+            info!("No local match for '{}', asking custom AI endpoint...", text);
+
+            match custom_ai::ask(text) {
+                Ok(custom_ai::CustomDecision::Reply { text: reply }) => {
+                    info!("Custom AI replied: {}", reply);
+                    ipc::send(IpcEvent::AiReply { text: reply });
+                    speak(voices::play_reply);
+                    ipc::send(IpcEvent::Idle);
+                    return false; // AI replies never chain
+                }
+                Err(e) => {
+                    // don't give up here - the local model is still a valid
+                    // fallback even if the user's own endpoint is down/out
+                    // of quota/misconfigured.
+                    warn!("Custom AI endpoint failed, falling back to local model: {}", e);
+                }
             }
-            Err(e) => {
-                warn!("Claude routing failed: {}", e);
+        }
+
+        if cmd_result.is_none() {
+            info!("No cloud AI answered '{}', asking local model...", text);
+
+            match local_ai::ask(text) {
+                Ok(local_ai::LocalDecision::Reply { text: reply }) => {
+                    info!("Local model replied: {}", reply);
+                    ipc::send(IpcEvent::AiReply { text: reply });
+                    speak(voices::play_reply);
+                    ipc::send(IpcEvent::Idle);
+                    return false; // AI replies never chain
+                }
+                Err(e) => {
+                    warn!("Local model failed: {}", e);
+                }
             }
         }
     }

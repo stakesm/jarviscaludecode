@@ -6,6 +6,8 @@ pub mod gliner;
 pub mod ort_model;
 #[cfg(feature = "jarvis_app")]
 pub mod intent_classifier;
+#[cfg(feature = "jarvis_app")]
+pub mod llm;
 #[cfg(feature = "vosk")]
 pub mod vosk;
 #[cfg(feature = "nnnoiseless")]
