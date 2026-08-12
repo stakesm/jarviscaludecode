@@ -2,16 +2,37 @@ use once_cell::sync::OnceCell;
 use pv_recorder::{PvRecorder, PvRecorderBuilder};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use crate::APP_DIR;
+
 static RECORDER: OnceCell<PvRecorder> = OnceCell::new();
 static IS_RECORDING: AtomicBool = AtomicBool::new(false);
+
+// pv_recorder's own default library path is baked in at *its own* compile
+// time via `env!("OUT_DIR")` - the build directory on whatever machine
+// compiled the crate (e.g. GitHub Actions' `D:\a\...\target\...\out`). That
+// path never exists on an end user's machine, so every install failed at
+// startup with "Failed to load pvrecorder dynamic library: LoadLibraryExW
+// failed" the instant it tried to touch the microphone. Point it at where
+// tauri.conf.json actually bundles the DLL instead: right next to the exe.
+#[cfg(target_os = "windows")]
+const PV_RECORDER_LIB_NAME: &str = "libpv_recorder.dll";
+#[cfg(target_os = "macos")]
+const PV_RECORDER_LIB_NAME: &str = "libpv_recorder.dylib";
+#[cfg(all(unix, not(target_os = "macos")))]
+const PV_RECORDER_LIB_NAME: &str = "libpv_recorder.so";
+
+fn pv_recorder_library_path() -> std::path::PathBuf {
+    APP_DIR.join(PV_RECORDER_LIB_NAME)
+}
 
 pub fn init_microphone(device_index: i32, frame_length: u32) -> bool {
     if RECORDER.get().is_some() {
         return true; // already initialized
     }
-    
+
     // initialize
     let pv_recorder = PvRecorderBuilder::new(frame_length as i32)
+        .library_path(&pv_recorder_library_path())
         .device_index(device_index)
         // .frame_length(frame_length as i32)
         .init();
@@ -103,7 +124,9 @@ pub fn stop_recording() -> Result<(), ()> {
 }
 
 pub fn list_audio_devices() -> Vec<String> {
-    let audio_devices = PvRecorderBuilder::default().get_available_devices();
+    let audio_devices = PvRecorderBuilder::default()
+        .library_path(&pv_recorder_library_path())
+        .get_available_devices();
     match audio_devices {
         Ok(audio_devices) => audio_devices,
         Err(err) => {
