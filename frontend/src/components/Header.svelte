@@ -5,7 +5,6 @@
     import { currentLanguage, setLanguage, translations, translate } from "@/stores"
     
     let appVersion = ""
-    let commandsCount = 0
 
     let selectedLang = "?"
     let langDropdownOpen = false
@@ -19,7 +18,6 @@
     onMount(async () => {
         try {
             appVersion = await invoke<string>("get_app_version")
-            commandsCount = await invoke<number>("get_commands_count")
 
             // load saved language
             const savedLang = await invoke<string>("db_read", { key: "language" })
@@ -27,7 +25,7 @@
                 selectedLang = savedLang
             }
         } catch {
-            commandsCount = 0
+            // ignore - defaults already set
         }
     })
 
@@ -67,11 +65,6 @@
     </div>
     
     <div class="header-right">
-        <button class="header-btn" on:click={() => $goto('/commands')}>
-            <span class="btn-text">{t('header-commands')}</span>
-            <span class="btn-badge purple">{commandsCount}+</span>
-        </button>
-        
         <button class="header-btn" on:click={() => $goto('/settings')}>
             <span class="btn-text">{t('header-settings')}</span>
         </button>
@@ -169,13 +162,13 @@
         text-align: left;
 
         &:hover {
-            background: rgba(82, 254, 254, 0.1);
+            background: rgba(255, 179, 71, 0.1);
             color: #ffffff;
         }
 
         &.active {
-            background: rgba(82, 254, 254, 0.15);
-            color: #52fefe;
+            background: rgba(255, 179, 71, 0.15);
+            color: #ffb347;
         }
     }
 

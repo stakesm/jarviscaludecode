@@ -131,22 +131,44 @@ pub fn run_jarvis_app() -> Result<(), String> {
         .parent()
         .ok_or("Failed to get exe directory")?
         .to_path_buf();
-    
+
     #[cfg(target_os = "windows")]
-    let jarvis_app_name = "jarvis-app.exe";
-    
+    let ext = "exe";
     #[cfg(not(target_os = "windows"))]
-    let jarvis_app_name = "jarvis-app";
-    
-    let jarvis_app_path = exe_dir.join(jarvis_app_name);
-    
-    if !jarvis_app_path.exists() {
-        return Err(format!("jarvis-app not found at: {}", jarvis_app_path.display()));
-    }
-    
+    let ext = "";
+
+    // In dev builds jarvis-app sits right next to this binary as plain
+    // "jarvis-app(.exe)" (same workspace target dir). In a bundled
+    // installer it's shipped as a Tauri sidecar and keeps its
+    // target-triple suffix, e.g. "jarvis-app-x86_64-pc-windows-msvc.exe" -
+    // so accept either instead of assuming the plain name.
+    let jarvis_app_path = std::fs::read_dir(&exe_dir)
+        .map_err(|e| format!("Failed to read app directory {}: {}", exe_dir.display(), e))?
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .find(|p| {
+            let stem_matches = p
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .map(|s| s == "jarvis-app" || s.starts_with("jarvis-app-"))
+                .unwrap_or(false);
+            let ext_matches = if ext.is_empty() {
+                p.extension().is_none()
+            } else {
+                p.extension().and_then(|e| e.to_str()) == Some(ext)
+            };
+            stem_matches && ext_matches
+        })
+        .ok_or_else(|| {
+            format!(
+                "jarvis-app executable not found next to the GUI in: {}",
+                exe_dir.display()
+            )
+        })?;
+
     std::process::Command::new(&jarvis_app_path)
         .spawn()
         .map_err(|e| format!("Failed to start jarvis-app: {}", e))?;
-    
+
     Ok(())
 }

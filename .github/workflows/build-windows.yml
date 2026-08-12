@@ -58,6 +58,21 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
+      - name: Build jarvis-app and stage it as a Tauri sidecar
+        shell: pwsh
+        # jarvis-gui (the window you see) only launches the actual
+        # assistant engine (jarvis-app) as a separate process - but Tauri's
+        # bundler only packages the jarvis-gui binary itself. Without this,
+        # the installed app has no jarvis-app.exe to launch at all and the
+        # "Start" button silently does nothing. Build it explicitly and
+        # place it where tauri.conf.json's "externalBin" expects it, using
+        # Tauri's required "<name>-<target-triple>.exe" sidecar naming.
+        run: |
+          cargo build --release -p jarvis-app
+          New-Item -ItemType Directory -Force -Path crates/jarvis-gui/binaries | Out-Null
+          $triple = (rustc -vV | Select-String '^host:\s*(\S+)').Matches[0].Groups[1].Value
+          Copy-Item target/release/jarvis-app.exe "crates/jarvis-gui/binaries/jarvis-app-$triple.exe"
+
       - name: Build Windows installer
         working-directory: crates/jarvis-gui
         shell: pwsh

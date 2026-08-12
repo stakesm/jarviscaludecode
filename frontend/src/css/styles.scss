@@ -18,8 +18,8 @@ body {
         z-index: 0;
         pointer-events: none;
         background-image:
-            linear-gradient(rgba(82, 254, 254, 0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(82, 254, 254, 0.05) 1px, transparent 1px);
+            linear-gradient(rgba(255, 179, 71, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 179, 71, 0.05) 1px, transparent 1px);
         background-size: 42px 42px;
         mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 0%, transparent 75%);
         -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 0%, transparent 75%);
@@ -46,19 +46,20 @@ body {
             );
     }
 
-    // assistant page background - deep space with a dim glow behind the hologram
+    // assistant page background - deep space with a dim amber glow behind
+    // the hologram, echoing its gold light rather than fighting it
     &.assist-page {
         background-color: #05080a;
         background-image: radial-gradient(
             ellipse 60% 50% at 50% 46%,
-            rgba(20, 110, 115, 0.28) 0%,
+            rgba(140, 80, 20, 0.22) 0%,
             rgba(5, 8, 10, 0) 70%
         );
 
         &.assist-active {
             background-image: radial-gradient(
                 ellipse 60% 50% at 50% 46%,
-                rgba(20, 90, 140, 0.38) 0%,
+                rgba(170, 100, 20, 0.3) 0%,
                 rgba(5, 8, 10, 0) 70%
             );
         }

@@ -237,8 +237,7 @@
     color="blue"
     withCloseButton={false}
 >
-    {t('settings-beta-desc')}<br />
-    {t('settings-beta-feedback')} <a href={feedbackLink} target="_blank">{t('settings-beta-bot')}</a>.
+    {t('settings-beta-desc')}
     <Space h="sm" />
     <Button
         color="gray"

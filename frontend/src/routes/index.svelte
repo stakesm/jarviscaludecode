@@ -27,6 +27,7 @@
     let processRunning = false
     let launching = false
     let wasRunning = false  // track previous state
+    let launchError = ""
 
     // HUD status readout under the hologram
     $: statusLabel = !$ipcConnected
@@ -62,14 +63,21 @@
 
     async function runAssistant() {
         launching = true
+        launchError = ""
         try {
             await invoke("run_jarvis_app")
             setTimeout(async () => {
                 await updateJarvisStats()
                 launching = false
+                if (!processRunning) {
+                    // command succeeded but the process isn't showing up as
+                    // running - it likely crashed immediately after launch
+                    launchError = t('assistant-launch-crashed')
+                }
             }, 2500)
         } catch (err) {
             console.error("Failed to run jarvis-app:", err)
+            launchError = typeof err === "string" ? err : t('assistant-launch-failed')
             launching = false
         }
     }
@@ -118,6 +126,9 @@
             >
                 {launching ? t('btn-starting') : t('btn-start')}
             </button>
+            {#if launchError}
+                <div class="launch-error">{launchError}</div>
+            {/if}
         {/if}
     </div>
 

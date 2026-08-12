@@ -24,6 +24,8 @@ search-placeholder = Enter a command manually or say «Jarvis» ...
 # ### MAIN PAGE
 assistant-not-running = ASSISTANT NOT RUNNING
 assistant-offline-hint = You can configure it without starting.
+assistant-launch-failed = Failed to start the assistant. Check the logs (Settings → log file).
+assistant-launch-crashed = The assistant started and closed right away. The install may be corrupted - try reinstalling.
 btn-start = START
 btn-starting = STARTING...
 

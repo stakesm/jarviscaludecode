@@ -24,6 +24,8 @@ search-placeholder = Введіть команду вручну або скаж�
 # ### MAIN PAGE
 assistant-not-running = АСИСТЕНТ НЕ ЗАПУЩЕНО
 assistant-offline-hint = Налаштувати його можна не запускаючи.
+assistant-launch-failed = Не вдалося запустити асистента. Перевірте логи (Налаштування → журнал).
+assistant-launch-crashed = Асистент запустився і одразу закрився. Можливо, пошкоджено встановлення — спробуйте перевстановити.
 btn-start = ЗАПУСТИТИ
 btn-starting = ЗАПУСК...
 
